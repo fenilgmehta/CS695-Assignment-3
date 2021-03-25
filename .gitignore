@@ -36,3 +36,5 @@
 src/cmake-build-debug/
 src/rootfs.tar.gz
 src/rootfs*/
+
+src/CONTAINER_NUMBER.txt
