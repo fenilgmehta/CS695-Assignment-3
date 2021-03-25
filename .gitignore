@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+
+.idea/
+src/cmake-build-debug/
+src/rootfs.tar.gz
+src/rootfs*/
