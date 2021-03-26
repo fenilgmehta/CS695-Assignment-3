@@ -2,7 +2,7 @@
 
 - Programming Assignment 3 - Build your own container using Linux namespaces and cgroups
 - [Problem Statement PDF](./Problem%20Statement%20-%20Programming%20Assignment%203.pdf) ([https://www.cse.iitb.ac.in/~cs695/pa/pa3.html](https://www.cse.iitb.ac.in/~cs695/pa/pa3.html))
-- [Demo](./CS695-Assignment-3%20-%20Demo%202%20-%202021-03-26%2014-47-00)
+- [Demo](./CS695-Assignment-3%20-%20Demo%202%20-%202021-03-26%2014-47-00.mp4)
 
 ### Solution Details and Steps
 
@@ -179,4 +179,6 @@
 - https://unix.stackexchange.com/questions/11018/how-to-choose-directory-name-during-untarring
 - https://unix.stackexchange.com/questions/327226/must-dev-random-and-dev-urandom-be-created-each-boot-or-are-they-static-files
 - https://stackoverflow.com/questions/2172352/in-bash-how-can-i-check-if-a-string-begins-with-some-value
+- https://developers.redhat.com/blog/2018/10/22/introduction-to-linux-interfaces-for-virtual-networking/
+- https://www.redhat.com/sysadmin/7-linux-namespaces
 
