@@ -57,8 +57,10 @@
        ```sh
        f_get_new_dir_name
 
-       tar --verbose --gzip --extract --file "rootfs.tar.gz"  # OR, tar -vzxf "rootfs.tar.gz"
-       mv 'rootfs' "${v_NEW_DIR_NAME}"
+       mkdir "${v_NEW_DIR_NAME}_tmp"
+       tar --verbose --gzip --extract --file "rootfs.tar.gz" -C "${v_NEW_DIR_NAME}_tmp"  # OR, tar -vzxf "rootfs.tar.gz"
+       mv "${v_NEW_DIR_NAME}_tmp/rootfs" "${v_NEW_DIR_NAME}"
+       rmdir "${v_NEW_DIR_NAME}_tmp"
 
        # The below lines will create "random" and "urandom" files inside the "${v_NEW_DIR_NAME}/dev"
        # directory. This is necessary because python inside this root filesystem needs these files.
