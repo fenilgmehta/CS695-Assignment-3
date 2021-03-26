@@ -91,6 +91,9 @@
        echo "16777216" > "/sys/fs/cgroup/memory/${CGROUP_MEMORY_NAME}/memory.limit_in_bytes"
        echo "25165824" > "/sys/fs/cgroup/memory/${CGROUP_MEMORY_NAME}/memory.memsw.limit_in_bytes"
 
+       # --------------------
+
+       # TESTING
        echo $$ > "/sys/fs/cgroup/cpu/${CGROUP_CPU_NAME}/cgroup.procs"
        echo $$ > "/sys/fs/cgroup/memory/${CGROUP_MEMORY_NAME}/cgroup.procs"
 
@@ -100,7 +103,7 @@
        done
        while true; do a=$((12345*12345)); done &  # background process
 
-       # Testing Memory Limits, view the Memory usage via SystemMonitor
+       # Testing of Memory Limits, view the Memory usage via SystemMonitor
        # This will abort the process in the 13th iteration for 16 MB (RAM), 24 MB (RAM + SWAP)
        # 12th iteration = ~10 MB, 13th iteration = ~28 MB, 14th iteration = ~83 MB, 15th iteration = ~247 MB
        # REFER: https://stackoverflow.com/questions/40888164/c-program-crashes-with-exit-code-9-sigkill
