@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_VERBOSE_MAKEFILE on)
 
 add_library(MyDebugger.o OBJECT MyDebugger.hpp)
-add_executable(MyContainer.out ./MyContainer.cpp $<TARGET_OBJECTS:MyDebugger.o> testing.cpp)
+add_executable(MyContainer.out ./MyContainer.cpp $<TARGET_OBJECTS:MyDebugger.o>)
 
 #file(GLOB sourceFILES src/*.cpp src/*.c)
 #file(GLOB sourceFILES *.cpp *.c)
