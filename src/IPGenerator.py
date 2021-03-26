@@ -9,12 +9,9 @@ if len(sys.argv) == 3:
 	try:
 		num = int(sys.argv[1])
 		# print(num)
-		num = 2*(num-1)
-		a,b,c,d=10,0,0,num
-		c = d // 254
-		b = c // 255
-		d %= 254
-		c %= 255
+		a,b,c,d=10,0,num,1
+		b = c // 256
+		c %= 256
 		if b > 255:
 			print("ERROR: IP went Outside limit: input={}, a={}, b={}, c={}, d={}".format(sys.argv[1], a,b,c,d))
 			sys.exit(1)
@@ -22,7 +19,7 @@ if len(sys.argv) == 3:
 			val_to_add_to_ip = 0
 		else:
 			val_to_add_to_ip = 1
-		print("{}.{}.{}.{}/24".format(a, b, c, d+1+val_to_add_to_ip))
+		print("{}.{}.{}.{}/24".format(a, b, c, d+val_to_add_to_ip))
 	except Exception as e:
 		print("ERROR: {}: {}".format(type(e), str(e)))
 else:
