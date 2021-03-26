@@ -12,8 +12,8 @@
 // DEBUG macros, to set the flag from commnad line, comment the below line and use `g++ name.cpp -DPRINT_DEBUG`
 #define PRINT_DEBUG
 
-#define db(...) dbg(__LINE__, #__VA_ARGS__, __VA_ARGS__);
-#define dbiter(...) dbgIter(#__VA_ARGS__, __VA_ARGS__);
+#define db(...) dbg(__LINE__, #__VA_ARGS__, __VA_ARGS__)
+#define dbiter(...) dbgIter(#__VA_ARGS__, __VA_ARGS__)
 
 #ifdef PRINT_DEBUG
 #define printFunction(outStream, functionName, argDelimiter, lineDelimiter) template <typename Arg, typename... Args> inline void functionName(Arg&& arg, Args&&... args) { outStream << arg; (void)(int[]){0, (void(outStream << argDelimiter << args),0)...}; outStream << lineDelimiter; }
