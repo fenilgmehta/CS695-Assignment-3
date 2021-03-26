@@ -1,6 +1,7 @@
 # CS695-Assignment-3
 
-- CS 695 - Assignment 3
+- Programming Assignment 3 - Build your own container using Linux namespaces and cgroups
+- [Problem Statement PDF](./Problem%20Statement%20-%20Programming%20Assignment%203.pdf) ([https://www.cse.iitb.ac.in/~cs695/pa/pa3.html](https://www.cse.iitb.ac.in/~cs695/pa/pa3.html))
 
 
 ### Solution Details and Steps
@@ -165,7 +166,10 @@
            "custom_mount_folder"
        ```
     
-    7. Clean the binaries generated using: `make clean`
+    7. Clean the binaries generated
+       ```sh
+       make clean
+       ```
 
 
 ### References
