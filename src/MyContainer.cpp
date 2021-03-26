@@ -1,31 +1,15 @@
 #include <iostream>
 #include <cstdint>
+#include <cstring>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
-
-#include <sys/syscall.h>
-#include <cstring>
-#include <fcntl.h>
-// #include <sched.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <unistd.h>
-// #include <sys/wait.h>
-// #include <sys/syscall.h>
-// #include <sys/mount.h>
-// #include <sys/stat.h>
-// #include <limits.h>
-// #include <sys/mman.h>
 
 #include "MyDebugger.hpp"
 
 using namespace std;
 
-// REFER: https://man7.org/linux/man-pages/man2/pivot_root.2.html
-static int pivot_root(const char *new_root, const char *put_old) {
-    return syscall(SYS_pivot_root, new_root, put_old);
-}
 
 void my_shell() {
     string cmd;
@@ -47,6 +31,7 @@ void my_shell() {
     }
 }
 
+
 // REFER: https://stackoverflow.com/questions/8518743/get-directory-from-file-path-c
 std::string last_dir_name(const std::string &fname) {
     const bool ends_with_separator = (fname[fname.size() - 1] == '/' || fname[fname.size() - 1] == '\\');
@@ -60,6 +45,7 @@ std::string last_dir_name(const std::string &fname) {
     // db(pos, pos == std::string::npos);
     return (pos == std::string::npos) ? fname.substr(0, fname_len_new) : fname.substr(pos + 1, fname_len_new - pos - 1);
 }
+
 
 // REFER: https://www.geeksforgeeks.org/command-line-arguments-in-c-cpp/
 int main(int argc, char **argv) {
@@ -94,44 +80,28 @@ int main(int argc, char **argv) {
     const char *param_network_namespace = argv[5];
     const char *param_dir_mount = argv[6];
 
-    if (param_dir_mount[0] == '\0') {
-        // Do NOT mount anything
-        log_info("NO custom director to mount");
-    } else {
-        // Mount if folder with same name does not exist in rootfs/mnt
-        const auto rootfs_str_len = strlen(param_rootfs_path);
-        db(rootfs_str_len);
-        const bool has_slash_at_end = param_rootfs_path[rootfs_str_len - 1] == '/';
-        db(has_slash_at_end);
-        const string str_param_dir_mount(param_dir_mount);
-        const string mnt_folder_name = last_dir_name(str_param_dir_mount);
 
-        // REFER: https://askubuntu.com/questions/557733/what-is-the-difference-between-ln-s-and-mount-bind
-        // REFER: https://askubuntu.com/questions/205841/how-do-i-mount-a-folder-from-another-partition
-        log_info((string() + "mkdir '" + param_rootfs_path + (has_slash_at_end ? "" : "/") +
-                  "mnt/" + mnt_folder_name + "'").c_str());
-        const auto res1 = system((string() + "mkdir '" + param_rootfs_path + (has_slash_at_end ? "" : "/") +
-                                  "mnt/" + mnt_folder_name + "'").c_str());
-        if (res1 != 0) {
-            log_warning("mkdir for custom directory mount failed with res1 = " + to_string(res1));
-        } else {
-            log_info((string() + "mount --bind '" + param_dir_mount + "' '"
-                      + param_rootfs_path + (has_slash_at_end ? "" : "/") + "mnt/" + mnt_folder_name + "'").c_str());
-            const auto res2 = system((string() + "mount --bind '" + param_dir_mount + "' '"
-                                      + param_rootfs_path + (has_slash_at_end ? "" : "/") +
-                                      "mnt/" + mnt_folder_name + "'").c_str());
-            if (res2 != 0) {
-                log_warning("Custom directory mount failed with res2 = " + to_string(res2));
-            } else {
-                log_success("Mounted \"" + str_param_dir_mount + R"(" under "/mnt")");
-            }
-        }
-    }
+    // THE MOST IMPORTANT THING
+    // REFER: https://man7.org/linux/man-pages/man7/namespaces.7.html
+    // REFER: https://man7.org/linux/man-pages/man2/unshare.2.html
+    // REFER: https://stackoverflow.com/questions/34872453/unshare-does-not-work-as-expected-in-c-api
+    // 1. CGROUP        --->  New CPU and Memory CGROUP
+    // 2. Join a Network Namespace if given
+    // 3. Mount custom directory inside the root filesystem of the container
+    // 4. unshare
+    //    4a. CLONE_NEWNS  ---> New Mount Namespace
+    //    4b. CLONE_NEWPID ---> New PID Namespace
+    //                            -> Fork is used because PID Namespace changes are in effect from the child
+    //                               process onwards
+    //    4c. CLONE_NEWUTS ---> New UTS namespace
+    //                            -> It provide isolation of system identifiers: (a) hostname, and (b) NIS domain name
+    //                            -> REFER: https://man7.org/linux/man-pages/man7/uts_namespaces.7.html
+    // 5. Show prompt using /bin/bash
 
 
     const auto parent_pid = getpid();
+    // 1. CGROUPS - limit CPU usage
     {
-        // 6. CGROUPS - limit CPU usage
         // REFER: https://man7.org/linux/man-pages/man7/cgroups.7.html
         //            -> https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt
         //            -> https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt
@@ -173,8 +143,8 @@ int main(int argc, char **argv) {
     }
 
 
+    // 2. Join a Network Namespace if given
     {
-        // 5. Network Namespace
         // REFER: https://man7.org/linux/man-pages/man2/setns.2.html
         log_info("Network Namespace");
         auto netns_fd = open(("/var/run/netns/" + string(param_network_namespace)).c_str(), O_RDONLY);
@@ -194,18 +164,43 @@ int main(int argc, char **argv) {
     }
 
 
-    // THE MOST IMPORTANT THING
-    // REFER: https://man7.org/linux/man-pages/man7/namespaces.7.html
-    // REFER: https://man7.org/linux/man-pages/man2/unshare.2.html
-    // REFER: https://stackoverflow.com/questions/34872453/unshare-does-not-work-as-expected-in-c-api
-    // 1. CLONE_NEWNS   --->  New Mount Namespace
-    // 2. CLONE_NEWPID  --->  New PID Namespace
-    //                           -> Fork is used because PID Namespace changes are in effect from child process onwards)
-    // 3. CLONE_NEWUTS  --->  New UTS namespace
-    //                           -> It provide isolation of system identifiers: (a) hostname, and (b) NIS domain name
-    //                           -> REFER: https://man7.org/linux/man-pages/man7/uts_namespaces.7.html
-    // 6. CGROUP        --->  New CPU and Memory CGROUP
-    // 7. Show prompt using /bin/bash
+    // 3. Mount custom directory inside the root filesystem of the container
+    if (param_dir_mount[0] == '\0') {
+        // Do NOT mount anything
+        log_info("NO custom director to mount");
+    } else {
+        // Mount if folder with same name does not exist in rootfs/mnt
+        const auto rootfs_str_len = strlen(param_rootfs_path);
+        db(rootfs_str_len);
+        const bool has_slash_at_end = param_rootfs_path[rootfs_str_len - 1] == '/';
+        db(has_slash_at_end);
+        const string str_param_dir_mount(param_dir_mount);
+        const string mnt_folder_name = last_dir_name(str_param_dir_mount);
+
+        // REFER: https://askubuntu.com/questions/557733/what-is-the-difference-between-ln-s-and-mount-bind
+        // REFER: https://askubuntu.com/questions/205841/how-do-i-mount-a-folder-from-another-partition
+        log_info((string() + "mkdir '" + param_rootfs_path + (has_slash_at_end ? "" : "/") +
+                  "mnt/" + mnt_folder_name + "'").c_str());
+        const auto res1 = system((string() + "mkdir '" + param_rootfs_path + (has_slash_at_end ? "" : "/") +
+                                  "mnt/" + mnt_folder_name + "'").c_str());
+        if (res1 != 0) {
+            log_warning("mkdir for custom directory mount failed with res1 = " + to_string(res1));
+        } else {
+            log_info((string() + "mount --bind '" + param_dir_mount + "' '"
+                      + param_rootfs_path + (has_slash_at_end ? "" : "/") + "mnt/" + mnt_folder_name + "'").c_str());
+            const auto res2 = system((string() + "mount --bind '" + param_dir_mount + "' '"
+                                      + param_rootfs_path + (has_slash_at_end ? "" : "/") +
+                                      "mnt/" + mnt_folder_name + "'").c_str());
+            if (res2 != 0) {
+                log_warning("Custom directory mount failed with res2 = " + to_string(res2));
+            } else {
+                log_success("Mounted \"" + str_param_dir_mount + R"(" under "/mnt")");
+            }
+        }
+    }
+
+
+    // 4. unshare the indicated namespaces from the parent process
     unshare(CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS | CLONE_NEWCGROUP);
 
     const auto child_pid = fork();
@@ -236,8 +231,8 @@ int main(int argc, char **argv) {
     //       and the console/TTY input is mapped to the parent process's STDIN
 
 
+    // 4a. MOUNT Namespace
     {
-        // 1. MOUNT Namespace
         // REFER: https://www.redhat.com/sysadmin/mount-namespaces
         // REFER: https://linuxlink.timesys.com/docs/classic/change_root
         // system("pwd");  // DEBUG
@@ -280,8 +275,8 @@ int main(int argc, char **argv) {
     }
 
 
+    // 4b. PID Namespace
     {
-        // 2. PID Namespace
         // NOTE: the below umount and mount is necessary because of New MOUNT Namespace
         // REFER: https://man7.org/linux/man-pages/man2/mount.2.html
 
@@ -302,12 +297,12 @@ int main(int argc, char **argv) {
             log_success("mount proc (PID Namespace)");
         }
 
-        cout << "INFO: Child's NEW PID after unshare is " << getpid() << endl;
+        log_info("Child's NEW PID after unshare = " + to_string(getpid()));
     }
 
 
+    // 4c. HOSTNAME - will change hostname in UTS namespace of CHILD (i.e. B)
     {
-        // 3. HOSTNAME - will change hostname in UTS namespace of child
         // See the below link for example on how to change hostname in a UTS namespace
         // REFER: https://man7.org/linux/man-pages/man2/clone.2.html#EXAMPLES:~:text=Change%20hostname%20in%20UTS%20namespace%20of%20child
         if (sethostname(param_new_hostname, strlen(param_new_hostname)) == -1) {
@@ -318,9 +313,7 @@ int main(int argc, char **argv) {
     }
 
 
-    // 7. Show Shell
-    // my_shell();
-    // system("/bin/bash");
+    // 5. Show Shell
     const auto bash_pid = fork();
     if (bash_pid == -1) {
         log_error("fork() to launch /bin/bash failed");
@@ -353,7 +346,6 @@ int main(int argc, char **argv) {
         } else {
             // Mount if folder with same name does not exist in rootfs/mnt
             const auto rootfs_str_len = strlen(param_rootfs_path);
-            const bool has_slash_at_end = param_rootfs_path[rootfs_str_len - 1] == '/';
             const string str_param_dir_mount(param_dir_mount);
             const string mnt_folder_name = last_dir_name(str_param_dir_mount);
 
@@ -380,25 +372,4 @@ int main(int argc, char **argv) {
     }
 
     return 0;
-
-    // /* And pivot the root filesystem. */
-    // auto new_root = param_rootfs_path;
-    // if (pivot_root(new_root, ".") == -1)
-    //     printf("pivot_root");
-    //
-    // /* Switch the current working directory to "/". */
-    //
-    // if (chdir("/") == -1)
-    //     printf("chdir");
-    //
-    // /* Unmount old root and remove mount point. */
-    // if (umount2("..", MNT_DETACH) == -1)
-    //     perror("umount2");
-    // if (rmdir("..") == -1)
-    //     perror("rmdir");
-
-
-    // clone();
-    // setns()
-
 }
