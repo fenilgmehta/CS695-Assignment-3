@@ -32,7 +32,6 @@
                v_NUM=0
            fi
 
-           # REFER: https://linuxize.com/post/bash-increment-decrement-variable/
            v_NUM=$(($v_NUM + 1))
            echo $v_NUM > 'CONTAINER_NUMBER.txt'       
            echo "v_NUM = ${v_NUM}"
@@ -58,11 +57,9 @@
        ```sh
        f_get_new_dir_name
 
-       # REFER: https://unix.stackexchange.com/questions/11018/how-to-choose-directory-name-during-untarring
        tar --verbose --gzip --extract --file "rootfs.tar.gz"  # OR, tar -vzxf "rootfs.tar.gz"
        mv 'rootfs' "${v_NEW_DIR_NAME}"
 
-       # REFER: https://unix.stackexchange.com/questions/327226/must-dev-random-and-dev-urandom-be-created-each-boot-or-are-they-static-files
        # The below lines will create "random" and "urandom" files inside the "${v_NEW_DIR_NAME}/dev"
        # directory. This is necessary because python inside this root filesystem needs these files.
        mknod -m 0666 "${v_NEW_DIR_NAME}/dev/random" c 1 8
@@ -114,27 +111,63 @@
        a="${a}${a}"
        ```
 
-    6. Compile and Execute the container shell
+    6. Network Namespace creation and initialization (OPTIONAL)
+       ```sh
+       # NOTE: internet access MAY not work (NOT tested)
+       # NOTE: if this step is not performed, then local client server program will not work
+       NETWORK_NAMESPACE_NAME="cs695netns${v_NUM}"
+       v_VETH0="cs695vethA${v_NUM}"
+       v_VETH1="cs695vethB${v_NUM}"
+       
+       # Create a network namespace
+       ip netns add "${NETWORK_NAMESPACE_NAME}"
+       # Turn the "lo" interface up
+       ip netns exec "${NETWORK_NAMESPACE_NAME}" ip link set dev lo up
+       # Create virtual ethernet A and B
+       ip link add "${v_VETH0}" type veth peer name "${v_VETH1}"
+       # veth B to namespace
+       ip link set "${v_VETH1}" netns "${NETWORK_NAMESPACE_NAME}"
+       
+       # Find NEW IP address based on ${v_NUM}
+       v_VETH0_IP="$(python3 IPGenerator.py ${v_NUM} a)"
+       v_VETH1_IP="$(python3 IPGenerator.py ${v_NUM} b)"
+
+       # IMPORTANT: if below checks give error, then set any unused IP address manually using:
+       # v_VETH0_IP="10.0.0.1/24"
+       # v_VETH1_IP="10.0.0.2/24"
+       if [[ $v_VETH0_IP == ERROR* ]]; then echo -e "WARNING: do NOT proceed\n${v_VETH0_IP}"; fi
+       if [[ $v_VETH1_IP == ERROR* ]]; then echo -e "WARNING: do NOT proceed\n${v_VETH1_IP}"; fi
+
+       ifconfig "${v_VETH0}" "${v_VETH0_IP}" up
+       ip netns exec "${NETWORK_NAMESPACE_NAME}" ifconfig "${v_VETH1}" "${v_VETH1_IP}" up
+       ```
+
+    7. Compile and Execute the container shell
        ```sh
        # CGROUP_CPU_PATH is relative path to "/sys/fs/cgroup/cpu/"
        # CGROUP_MEMORY_PATH is relative path to "/sys/fs/cgroup/memory/"
        make all
-       ./MyContainer.out <ROOT_FS_PATH> <HOSTNAME> <CGROUP_CPU_PATH> <CGROUP_MEMORY_PATH>
+       ./MyContainer.out <ROOT_FS_PATH> <HOSTNAME> \
+           <CGROUP_CPU_PATH> <CGROUP_MEMORY_PATH> <NETWORK_NAMESPACE_NAME> <MOUNT_DIR_PATH>
 
        make debug
-       ./MyContainer_debug.out "${v_NEW_DIR_NAME}" "hostname-${v_NEW_DIR_NAME}" "${CGROUP_CPU_NAME}" "${CGROUP_MEMORY_NAME}"
+       ./MyContainer_debug.out \
+           "${v_NEW_DIR_NAME}" \
+           "hostname-${v_NEW_DIR_NAME}" \
+           "${CGROUP_CPU_NAME}"         \
+           "${CGROUP_MEMORY_NAME}"      \
+           "${NETWORK_NAMESPACE_NAME}"     \
+           "custom_mount_folder"
        ```
     
     7. Clean the binaries generated using: `make clean`
 
 
-<!-- 
-### Useful Commands
-```sh
-
-```
--->
-
 ### References
 - https://ericchiang.github.io/post/containers-from-scratch/
+- https://lwn.net/Articles/580893/ (Network namespaces)
+- https://linuxize.com/post/bash-increment-decrement-variable/
+- https://unix.stackexchange.com/questions/11018/how-to-choose-directory-name-during-untarring
+- https://unix.stackexchange.com/questions/327226/must-dev-random-and-dev-urandom-be-created-each-boot-or-are-they-static-files
+- https://stackoverflow.com/questions/2172352/in-bash-how-can-i-check-if-a-string-begins-with-some-value
 
