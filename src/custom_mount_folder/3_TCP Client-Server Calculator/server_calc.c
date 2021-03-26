@@ -97,6 +97,7 @@ int main(int argc, char *argv[]) {
                 break;
         }
 
+        printf("SERVER: Reply sent to the client = %d\n", ans);
         write(newsockfd, &ans, sizeof(int));
         printf("\n");
     }
